@@ -1,0 +1,156 @@
+Project Blueprint: SewaSync
+
+Gurdwara Event & Religious Calendar Management Portal
+
+Date: March 2026
+Document Version: 1.0
+Target Audience: Prabandhak Committee, Development Team, Stakeholders
+
+1. Executive Summary
+
+Problem Statement: Gurdwaras face significant logistical challenges in manually coordinating major events (Gurpurabs), managing volunteer (Sewadar) allocations, tracking departmental budgets, and communicating schedule changes to the Sangat.
+Solution: SewaSync is a centralized, digital management portal designed specifically for Gurdwara administration. It streamlines event scheduling, volunteer capacity planning, financial tracking, and mass communication into a single, intuitive dashboard.
+
+2. Core Objectives
+
+Centralize Planning: Move from manual ledgers to a digital calendar for all religious events.
+
+Optimize Sewa (Volunteering): Ensure departments (Langar, Joda Ghar, etc.) are adequately staffed without overcrowding.
+
+Financial Transparency: Track estimated budgets versus actual spending in real-time.
+
+Enhance Communication: Provide a reliable channel to broadcast updates to the Sangat and Sewadars.
+
+Accountability: Maintain strict audit logs of administrative actions.
+
+3. System Architecture (Proposed)
+
+To transition from the current interactive prototype to a production-ready application, the following technology stack is recommended:
+
+Frontend Interface: React.js, Tailwind CSS (for responsive, modern UI), Lucide Icons.
+
+Backend API: Node.js (Express) or Python (Django/FastAPI).
+
+Database: PostgreSQL or MySQL (Relational database for structured event and financial data).
+
+Authentication: JWT (JSON Web Tokens) with Role-Based Access Control (RBAC).
+
+External Integrations: Twilio (SMS Gateway), SendGrid/Nodemailer (Email Gateway).
+
+4. Detailed Module Breakdown
+
+Module 1: Prabandhak Dashboard
+
+Overview: A high-level operational view.
+
+Key Metrics: Total active events, overall Sewa fulfillment percentage, total estimated budget, and actual expenditure.
+
+Quick Views: Lists the immediate upcoming schedule (next 30 days) and a live feed of recent expenses.
+
+Module 2: Event Scheduling
+
+Purpose: The central calendar engine.
+
+Features:
+
+Create, Read, Update, Delete (CRUD) operations for events.
+
+Categorization: Major Gurpurab, Regular Diwan, Kirtan Darbar, Amrit Sanchar, Community Camp.
+
+Set capacity requirements (e.g., "Requires 50 volunteers").
+
+Define estimated financial budgets per event.
+
+Module 3: Volunteer Allocation (Sewa)
+
+Purpose: Roster management and capacity tracking.
+
+Features:
+
+Register Sewadars with contact details.
+
+Assign to specific departments: Langar, Joda Ghar, Parking, Kirtan/Stage, Cleaning, Security.
+
+Visual progress bars indicating staffing fulfillment (e.g., 32/50 filled).
+
+Module 4: Budget Estimation & Tracking
+
+Purpose: Financial health monitoring per event.
+
+Features:
+
+Log specific line-item expenses (e.g., "Tent Setup", "Groceries").
+
+Automated variance calculation (Estimated vs. Actual).
+
+Health indicators (Red alert for over-budget, Green check for under-budget).
+
+Module 5: Notification System
+
+Purpose: Mass communication hub.
+
+Features:
+
+Targeted audience selection (e.g., "All Sangat", "Only Active Volunteers", "Volunteers for Vaisakhi").
+
+Multi-channel delivery selection (SMS, Email).
+
+Historical log of recently sent broadcasts.
+
+Module 6: Admin Panel & Security
+
+Purpose: System integrity and user management.
+
+Features:
+
+Secure login portal.
+
+Directory of authorized system users and their roles.
+
+Global Activity Log: Immutable, timestamped audit trail of every action taken in the portal (who created an event, who logged an expense, etc.).
+
+5. User Roles & Permissions (RBAC)
+
+Super Admin (e.g., Head Granthi / President):
+
+Full read/write access to all modules.
+
+Access to the Admin Panel and Activity Logs.
+
+Ability to add/remove other system users.
+
+Event Manager (e.g., Committee Member):
+
+Can create events, manage volunteers, and log expenses.
+
+Can send notifications.
+
+Cannot view the global Activity Log or modify system settings.
+
+Sewadar / Volunteer (Future Public View):
+
+Read-only access to upcoming events.
+
+Ability to self-register for empty Sewa slots.
+
+6. Database Schema Blueprint (Key Entities)
+
+Users Table: id, username, password_hash, name, role, last_login
+
+Events Table: id, title, date, type, volunteers_needed, estimated_budget, created_at
+
+Volunteers Table: id, event_id (FK), name, phone, department, registered_at
+
+Expenses Table: id, event_id (FK), description, amount, date, logged_by (FK)
+
+Activity_Logs Table: id, user_id (FK), action_description, timestamp
+
+7. Future Deployment & Roadmap
+
+Phase 1 (Current): Interactive UI/UX Prototype.
+
+Phase 2: Database integration and Backend API development. Live deployment to a cloud provider (AWS/GCP).
+
+Phase 3: Integration of actual SMS/Email gateways for real-time notifications.
+
+Phase 4: Development of a public-facing page for Sangat to view the calendar and digitally offer Dasvandh (donations) via payment g...

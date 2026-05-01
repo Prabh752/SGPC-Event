@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SewaSync - Gurdwara Management Portal API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: events
+    description: Event management
+  - name: volunteers
+    description: Volunteer/Sewadar management
+  - name: expenses
+    description: Budget and expense tracking
+  - name: notifications
+    description: Notification management
+  - name: activity-logs
+    description: Activity audit logs
+  - name: users
+    description: User management
+  - name: dashboard
+    description: Dashboard summary data
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,352 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary statistics
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List all events
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: upcoming
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create a new event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventBody"
+      responses:
+        "201":
+          description: Created event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  /events/{id}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get event by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+    put:
+      operationId: updateEvent
+      tags: [events]
+      summary: Update an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventBody"
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+    delete:
+      operationId: deleteEvent
+      tags: [events]
+      summary: Delete an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /events/{id}/budget-status:
+    get:
+      operationId: getEventBudgetStatus
+      tags: [events]
+      summary: Get budget health for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Budget status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetStatus"
+
+  /volunteers:
+    get:
+      operationId: listVolunteers
+      tags: [volunteers]
+      summary: List all volunteers
+      parameters:
+        - name: eventId
+          in: query
+          schema:
+            type: integer
+        - name: department
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of volunteers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Volunteer"
+    post:
+      operationId: createVolunteer
+      tags: [volunteers]
+      summary: Register a volunteer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVolunteerBody"
+      responses:
+        "201":
+          description: Created volunteer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Volunteer"
+
+  /volunteers/{id}:
+    delete:
+      operationId: deleteVolunteer
+      tags: [volunteers]
+      summary: Remove a volunteer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /volunteers/fulfillment:
+    get:
+      operationId: getVolunteerFulfillment
+      tags: [volunteers]
+      summary: Get volunteer fulfillment per event
+      responses:
+        "200":
+          description: Fulfillment stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VolunteerFulfillment"
+
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List all expenses
+      parameters:
+        - name: eventId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Log a new expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExpenseBody"
+      responses:
+        "201":
+          description: Created expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /expenses/{id}:
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      summary: Delete an expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List sent notifications
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+    post:
+      operationId: sendNotification
+      tags: [notifications]
+      summary: Send a notification broadcast
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNotificationBody"
+      responses:
+        "201":
+          description: Sent notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /activity-logs:
+    get:
+      operationId: listActivityLogs
+      tags: [activity-logs]
+      summary: List audit activity logs
+      responses:
+        "200":
+          description: Activity log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLog"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all system users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +393,339 @@ components:
       required:
         - status
 
+    DashboardSummary:
+      type: object
+      properties:
+        totalEvents:
+          type: integer
+        upcomingEvents:
+          type: integer
+        totalVolunteers:
+          type: integer
+        sewaFulfillmentPercent:
+          type: number
+        totalEstimatedBudget:
+          type: number
+        totalActualSpend:
+          type: number
+        recentExpenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+        upcomingEventsList:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+      required:
+        - totalEvents
+        - upcomingEvents
+        - totalVolunteers
+        - sewaFulfillmentPercent
+        - totalEstimatedBudget
+        - totalActualSpend
+        - recentExpenses
+        - upcomingEventsList
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        date:
+          type: string
+        type:
+          type: string
+          enum: [major_gurpurab, regular_diwan, kirtan_darbar, amrit_sanchar, community_camp]
+        volunteersNeeded:
+          type: integer
+        estimatedBudget:
+          type: number
+        description:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - title
+        - date
+        - type
+        - volunteersNeeded
+        - estimatedBudget
+        - createdAt
+
+    CreateEventBody:
+      type: object
+      properties:
+        title:
+          type: string
+        date:
+          type: string
+        type:
+          type: string
+          enum: [major_gurpurab, regular_diwan, kirtan_darbar, amrit_sanchar, community_camp]
+        volunteersNeeded:
+          type: integer
+        estimatedBudget:
+          type: number
+        description:
+          type: string
+      required:
+        - title
+        - date
+        - type
+        - volunteersNeeded
+        - estimatedBudget
+
+    BudgetStatus:
+      type: object
+      properties:
+        eventId:
+          type: integer
+        eventTitle:
+          type: string
+        estimatedBudget:
+          type: number
+        actualSpend:
+          type: number
+        variance:
+          type: number
+        isOverBudget:
+          type: boolean
+        expenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+      required:
+        - eventId
+        - eventTitle
+        - estimatedBudget
+        - actualSpend
+        - variance
+        - isOverBudget
+        - expenses
+
+    Volunteer:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        eventTitle:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        department:
+          type: string
+          enum: [langar, joda_ghar, parking, kirtan_stage, cleaning, security]
+        registeredAt:
+          type: string
+      required:
+        - id
+        - eventId
+        - name
+        - phone
+        - department
+        - registeredAt
+
+    CreateVolunteerBody:
+      type: object
+      properties:
+        eventId:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        department:
+          type: string
+          enum: [langar, joda_ghar, parking, kirtan_stage, cleaning, security]
+      required:
+        - eventId
+        - name
+        - phone
+        - department
+
+    VolunteerFulfillment:
+      type: object
+      properties:
+        eventId:
+          type: integer
+        eventTitle:
+          type: string
+        eventDate:
+          type: string
+        volunteersNeeded:
+          type: integer
+        volunteersRegistered:
+          type: integer
+        fulfillmentPercent:
+          type: number
+      required:
+        - eventId
+        - eventTitle
+        - eventDate
+        - volunteersNeeded
+        - volunteersRegistered
+        - fulfillmentPercent
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        eventTitle:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+        loggedBy:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - eventId
+        - description
+        - amount
+        - date
+        - createdAt
+
+    CreateExpenseBody:
+      type: object
+      properties:
+        eventId:
+          type: integer
+        description:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+      required:
+        - eventId
+        - description
+        - amount
+        - date
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        message:
+          type: string
+        audience:
+          type: string
+          enum: [all_sangat, active_volunteers, event_volunteers]
+        channels:
+          type: array
+          items:
+            type: string
+            enum: [sms, email]
+        eventId:
+          type: integer
+        sentAt:
+          type: string
+        sentBy:
+          type: string
+      required:
+        - id
+        - title
+        - message
+        - audience
+        - channels
+        - sentAt
+
+    SendNotificationBody:
+      type: object
+      properties:
+        title:
+          type: string
+        message:
+          type: string
+        audience:
+          type: string
+          enum: [all_sangat, active_volunteers, event_volunteers]
+        channels:
+          type: array
+          items:
+            type: string
+            enum: [sms, email]
+        eventId:
+          type: integer
+      required:
+        - title
+        - message
+        - audience
+        - channels
+
+    ActivityLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+        action:
+          type: string
+        timestamp:
+          type: string
+      required:
+        - id
+        - action
+        - timestamp
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [super_admin, event_manager, sewadar]
+        lastLogin:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - username
+        - name
+        - role
+        - createdAt
+
+    CreateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [super_admin, event_manager, sewadar]
+        password:
+          type: string
+      required:
+        - username
+        - name
+        - role
+        - password
