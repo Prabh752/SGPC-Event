@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
   Calendar,
+  CalendarDays,
   Users,
   IndianRupee,
   Bell,
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/volunteers", label: "Volunteers", icon: Users },
   { href: "/budget", label: "Budget", icon: IndianRupee },

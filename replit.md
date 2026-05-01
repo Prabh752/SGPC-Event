@@ -33,11 +33,18 @@ SewaSync is a full-stack Gurdwara Event & Religious Calendar Management Portal b
 ## Modules
 
 1. **Dashboard** — KPI overview (events, sewadars, ₹ budget, fulfillment bar)
-2. **Events** — CRUD for Gurpurabs, Diwans, Kirtan Darbar, Amrit Sanchar, Community Camp
-3. **Volunteers** — Sewadar registration by department (Langar, Joda Ghar, etc.) with fulfillment progress bars
-4. **Budget** — Expense log in ₹ with per-event budget health (red/green indicators)
-5. **Notifications** — Broadcast to Sangat via SMS/Email with audience targeting
-6. **Admin Panel** — User management (RBAC: Super Admin, Event Manager, Sewadar) + global audit log
+2. **Calendar** — Monthly religious calendar view with color-coded event dots, click-to-inspect, and month sidebar list
+3. **Events** — CRUD for Gurpurabs, Diwans, Kirtan Darbar, Amrit Sanchar, Community Camp
+4. **Volunteers** — Sewadar registration by department (Langar, Joda Ghar, etc.) with fulfillment progress bars
+5. **Budget** — Expense log in ₹ with per-event budget health (red/green indicators)
+6. **Notifications** — Broadcast to Sangat via SMS/Email with audience targeting
+7. **Admin Panel** — User management (RBAC: Super Admin, Event Manager, Sewadar) + global audit log
+
+## Email (Pending)
+
+Live email sending via SendGrid was requested. The user dismissed the Replit SendGrid connector integration.
+To enable: add `SENDGRID_API_KEY` as a secret (starts with `SG.`) and install `@sendgrid/mail` in `artifacts/api-server`.
+Then wire up the `POST /api/notifications` route to call `sgMail.send()` after saving to DB.
 
 ## Database Schema
 
