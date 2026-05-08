@@ -2,6 +2,23 @@
 const BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 const API  = '/api';
 
+// ─── Auth session ─────────────────────────────────────────────────────────────
+let authToken = sessionStorage.getItem('ss_token') || null;
+let authUser  = JSON.parse(sessionStorage.getItem('ss_user') || 'null');
+
+function saveSession(token, user) {
+  authToken = token;
+  authUser  = user;
+  sessionStorage.setItem('ss_token', token);
+  sessionStorage.setItem('ss_user', JSON.stringify(user));
+}
+function clearSession() {
+  authToken = null;
+  authUser  = null;
+  sessionStorage.removeItem('ss_token');
+  sessionStorage.removeItem('ss_user');
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function inr(n) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(n) || 0);
@@ -20,10 +37,14 @@ function esc(s) {
 
 // ─── API helpers ───────────────────────────────────────────────────────────────
 async function apiFetch(path, opts = {}) {
-  const res = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-    ...opts,
-  });
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (res.status === 401) {
+    clearSession();
+    showLogin();
+    throw new Error('Session expired. Please log in again.');
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => 'Error');
     throw new Error(text || `HTTP ${res.status}`);
@@ -977,9 +998,140 @@ window.deleteUser = async (id, name) => {
   catch (err) { toast(err.message, 'error'); }
 };
 
+// ─── Login page ─────────────────────────────────────────────────────────────────
+function showLogin() {
+  document.getElementById('app-shell').style.display = 'none';
+  let screen = document.getElementById('login-screen');
+  if (!screen) {
+    screen = document.createElement('div');
+    screen.id = 'login-screen';
+    document.body.appendChild(screen);
+  }
+  screen.innerHTML = `
+  <div class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">S</div>
+        <div class="login-logo-title">SewaSync</div>
+        <div class="login-logo-sub">Gurdwara Management Portal</div>
+      </div>
+      <div class="login-divider"></div>
+      <div class="login-heading">Welcome back</div>
+      <div class="login-subheading">Sign in with your assigned credentials to continue</div>
+
+      <div id="login-error" class="login-error">Invalid User ID or password. Please try again.</div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label">User ID</label>
+          <div class="login-input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input class="form-input" id="login-username" name="username" type="text"
+              placeholder="Enter your User ID" autocomplete="username" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="login-input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <input class="form-input" id="login-password" name="password" type="password"
+              placeholder="Enter your password" autocomplete="current-password" required>
+          </div>
+        </div>
+        <button type="submit" class="login-btn" id="login-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+          Sign In
+        </button>
+      </form>
+
+      <div class="login-footer-text">
+        Waheguru Ji Ka Khalsa &nbsp;•&nbsp; Waheguru Ji Ki Fateh
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('login-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+    errEl.classList.remove('show');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;border-color:rgba(255,255,255,.4);border-top-color:#fff"></div> Signing in…';
+
+    try {
+      const data = await fetch(API + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('login-username').value.trim(),
+          password: document.getElementById('login-password').value,
+        }),
+      });
+      if (!data.ok) {
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg> Sign In`;
+        return;
+      }
+      const { token, user } = await data.json();
+      saveSession(token, user);
+      showApp();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg> Sign In`;
+    }
+  };
+
+  // Focus username field
+  setTimeout(() => document.getElementById('login-username')?.focus(), 100);
+}
+
+function showApp() {
+  const screen = document.getElementById('login-screen');
+  if (screen) screen.remove();
+  const shell = document.getElementById('app-shell');
+  shell.style.display = 'flex';
+
+  // Update sidebar user chip
+  if (authUser) {
+    const roleLabels = { super_admin: 'Super Admin', event_manager: 'Event Manager', sewadar: 'Sewadar' };
+    const initial = (authUser.name || authUser.username || 'U')[0].toUpperCase();
+    const footer = document.getElementById('sidebar-footer');
+    if (footer) {
+      footer.innerHTML = `
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar">${initial}</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name">${esc(authUser.name || authUser.username)}</div>
+            <div class="sidebar-user-role">${roleLabels[authUser.role] || authUser.role}</div>
+          </div>
+          <button class="logout-btn" onclick="doLogout()" title="Sign out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          </button>
+        </div>`;
+    }
+  }
+
+  loadPage(currentPage());
+}
+
+window.doLogout = async () => {
+  try { await fetch(API + '/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` } }); } catch (_) {}
+  clearSession();
+  showLogin();
+};
+
 // ─── Init ──────────────────────────────────────────────────────────────────────
-window.addEventListener('popstate', () => loadPage(currentPage()));
+window.addEventListener('popstate', () => {
+  if (authToken) loadPage(currentPage());
+});
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadPage(currentPage());
+  if (authToken) {
+    showApp();
+  } else {
+    showLogin();
+  }
 });
