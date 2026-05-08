@@ -19,6 +19,23 @@ function clearSession() {
   sessionStorage.removeItem('ss_user');
 }
 
+// ─── Role-based access control ────────────────────────────────────────────────
+const ROLE_PAGES = {
+  sewadar:       ['dashboard', 'calendar', 'events', 'volunteers'],
+  event_manager: ['dashboard', 'calendar', 'events', 'volunteers', 'budget', 'notifications'],
+  super_admin:   ['dashboard', 'calendar', 'events', 'volunteers', 'budget', 'notifications', 'admin'],
+};
+function canAccess(page) {
+  const role = authUser?.role || 'sewadar';
+  return (ROLE_PAGES[role] || ROLE_PAGES.sewadar).includes(page);
+}
+function canEdit() {
+  return authUser?.role === 'event_manager' || authUser?.role === 'super_admin';
+}
+function isAdmin() {
+  return authUser?.role === 'super_admin';
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function inr(n) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(n) || 0);
@@ -105,6 +122,22 @@ function currentPage() {
 
 async function loadPage(page) {
   if (!PAGES[page]) page = 'dashboard';
+  if (!canAccess(page)) {
+    const main = document.getElementById('main-content');
+    const roleLabels = { super_admin: 'Super Admin', event_manager: 'Event Manager', sewadar: 'Sewadar' };
+    main.innerHTML = `
+      <div class="empty-state" style="padding:60px 20px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:56px;height:56px;color:var(--text-light)">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+        <h3 style="margin:16px 0 8px;color:var(--text-main)">Access Restricted</h3>
+        <p>Your role <strong>${roleLabels[authUser?.role] || authUser?.role}</strong> does not have permission to view this page.</p>
+        <button class="btn btn-primary" style="margin-top:20px" onclick="navigate('dashboard')">Back to Dashboard</button>
+      </div>`;
+    document.getElementById('topbar-title').textContent = 'Access Restricted';
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+    return;
+  }
   document.querySelectorAll('.nav-link').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
@@ -429,27 +462,28 @@ async function renderEvents(container) {
   const events = await api.get('/events');
   events.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+  const editable = canEdit();
   container.innerHTML = `
   <div class="page-header">
     <div class="page-header-left">
       <h1>Events</h1>
       <p>Manage Gurdwara events and programmes</p>
     </div>
-    <button class="btn btn-primary" onclick="openAddEvent()">
+    ${editable ? `<button class="btn btn-primary" onclick="openAddEvent()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add Event
-    </button>
+    </button>` : `<span class="badge badge-blue" style="padding:6px 12px;font-size:12px">View Only</span>`}
   </div>
   <div class="card">
     <div class="table-wrap">
       <table>
         <thead><tr>
           <th>Event</th><th>Type</th><th>Date</th>
-          <th>Sewadars</th><th>Budget</th><th>Actions</th>
+          <th>Sewadars</th><th>Budget</th>${editable ? '<th>Actions</th>' : ''}
         </tr></thead>
         <tbody>
           ${events.length === 0
-            ? `<tr><td colspan="6"><div class="empty-state" style="padding:32px"><p>No events yet. Add your first event!</p></div></td></tr>`
+            ? `<tr><td colspan="${editable ? 6 : 5}"><div class="empty-state" style="padding:32px"><p>No events yet.</p></div></td></tr>`
             : events.map(ev => {
                 const t = evType(ev.type);
                 return `<tr>
@@ -458,12 +492,12 @@ async function renderEvents(container) {
                   <td>${fmtDate(ev.date)}</td>
                   <td>${ev.volunteersNeeded}</td>
                   <td>${inr(ev.estimatedBudget)}</td>
-                  <td>
+                  ${editable ? `<td>
                     <div style="display:flex;gap:6px">
                       <button class="btn btn-secondary btn-sm" onclick="openEditEvent(${ev.id})">Edit</button>
                       <button class="btn btn-danger btn-sm" onclick="deleteEvent(${ev.id}, '${esc(ev.title)}')">Delete</button>
                     </div>
-                  </td>
+                  </td>` : ''}
                 </tr>`;
               }).join('')}
         </tbody>
@@ -555,16 +589,17 @@ async function renderVolunteers(container) {
 
   const depts = ['Langar','Joda Ghar','Parking','Kirtan / Stage','Cleaning','Security'];
 
+  const editable = canEdit();
   container.innerHTML = `
   <div class="page-header">
     <div class="page-header-left">
       <h1>Volunteers</h1>
       <p>${volunteers.length} sewadars registered</p>
     </div>
-    <button class="btn btn-primary" onclick="openRegisterVolunteer(${JSON.stringify(events).replace(/"/g,'&quot;')})">
+    ${editable ? `<button class="btn btn-primary" onclick="openRegisterVolunteer(${JSON.stringify(events).replace(/"/g,'&quot;')})">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Register Sewadar
-    </button>
+    </button>` : `<span class="badge badge-blue" style="padding:6px 12px;font-size:12px">View Only</span>`}
   </div>
 
   ${fulfillment.length > 0 ? `
@@ -589,10 +624,10 @@ async function renderVolunteers(container) {
   <div class="card">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Name</th><th>Phone</th><th>Department</th><th>Event</th><th>Registered</th><th>Action</th></tr></thead>
+        <thead><tr><th>Name</th><th>Phone</th><th>Department</th><th>Event</th><th>Registered</th>${editable ? '<th>Action</th>' : ''}</tr></thead>
         <tbody>
           ${volunteers.length === 0
-            ? `<tr><td colspan="6"><div class="empty-state" style="padding:32px"><p>No sewadars registered yet.</p></div></td></tr>`
+            ? `<tr><td colspan="${editable ? 6 : 5}"><div class="empty-state" style="padding:32px"><p>No sewadars registered yet.</p></div></td></tr>`
             : volunteers.map(v => `
               <tr>
                 <td><div style="font-weight:500">${esc(v.name)}</div></td>
@@ -600,7 +635,7 @@ async function renderVolunteers(container) {
                 <td><span class="badge badge-gray">${esc(v.department)}</span></td>
                 <td>${esc(eventMap[v.eventId] || 'Unknown event')}</td>
                 <td>${fmtDate(v.registeredAt)}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="deleteVolunteer(${v.id},'${esc(v.name)}')">Remove</button></td>
+                ${editable ? `<td><button class="btn btn-danger btn-sm" onclick="deleteVolunteer(${v.id},'${esc(v.name)}')">Remove</button></td>` : ''}
               </tr>`).join('')}
         </tbody>
       </table>
@@ -668,16 +703,17 @@ async function renderBudget(container) {
   const totalBudget = events.reduce((s, e) => s + (Number(e.estimatedBudget) || 0), 0);
   const totalSpent  = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
+  const editable = canEdit();
   container.innerHTML = `
   <div class="page-header">
     <div class="page-header-left">
       <h1>Budget Tracker</h1>
       <p>${inr(totalSpent)} spent of ${inr(totalBudget)} total budget</p>
     </div>
-    <button class="btn btn-primary" onclick="openAddExpense(${JSON.stringify(events).replace(/"/g,'&quot;')})">
+    ${editable ? `<button class="btn btn-primary" onclick="openAddExpense(${JSON.stringify(events).replace(/"/g,'&quot;')})">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Log Expense
-    </button>
+    </button>` : ''}
   </div>
 
   <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
@@ -707,10 +743,10 @@ async function renderBudget(container) {
       <div class="card-header"><div class="card-title">Expense Log</div></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Description</th><th>Event</th><th>Date</th><th>Amount</th><th>By</th><th></th></tr></thead>
+          <thead><tr><th>Description</th><th>Event</th><th>Date</th><th>Amount</th><th>By</th>${editable ? '<th></th>' : ''}</tr></thead>
           <tbody>
             ${expenses.length === 0
-              ? `<tr><td colspan="6"><div class="empty-state" style="padding:32px"><p>No expenses logged yet.</p></div></td></tr>`
+              ? `<tr><td colspan="${editable ? 6 : 5}"><div class="empty-state" style="padding:32px"><p>No expenses logged yet.</p></div></td></tr>`
               : [...expenses].sort((a,b) => new Date(b.date) - new Date(a.date)).map(ex => `
                 <tr>
                   <td style="font-weight:500">${esc(ex.description)}</td>
@@ -718,7 +754,7 @@ async function renderBudget(container) {
                   <td>${fmtDate(ex.date)}</td>
                   <td style="font-weight:600">${inr(ex.amount)}</td>
                   <td style="color:var(--text-muted)">${esc(ex.loggedBy)}</td>
-                  <td><button class="btn btn-danger btn-sm" onclick="deleteExpense(${ex.id})">×</button></td>
+                  ${editable ? `<td><button class="btn btn-danger btn-sm" onclick="deleteExpense(${ex.id})">×</button></td>` : ''}
                 </tr>`).join('')}
           </tbody>
         </table>
@@ -799,14 +835,15 @@ async function renderNotifications(container) {
   const audiences = ['all_sangat','active_volunteers','event_specific'];
   const audienceLabel = { all_sangat: 'All Sangat', active_volunteers: 'Active Volunteers', event_specific: 'Event Specific' };
 
+  const editable = canEdit();
   container.innerHTML = `
   <div class="page-header-left" style="margin-bottom:20px">
     <h1>Notifications</h1>
     <p>Send announcements to Sangat and volunteers</p>
   </div>
 
-  <div class="dash-grid">
-    <div class="card">
+  <div class="${editable ? 'dash-grid' : ''}">
+    ${editable ? `<div class="card">
       <div class="card-header"><div class="card-title">Send Notification</div></div>
       <div class="card-body">
         <form id="notif-form">
@@ -840,7 +877,7 @@ async function renderNotifications(container) {
           </div>
         </form>
       </div>
-    </div>
+    </div>` : ''}
 
     <div class="card">
       <div class="card-header"><div class="card-title">Sent History (${notifications.length})</div></div>
@@ -863,18 +900,20 @@ async function renderNotifications(container) {
     </div>
   </div>`;
 
-  document.getElementById('notif-form').onsubmit = async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const channels = fd.getAll('channels');
-    const audience = fd.get('audience');
-    const body = { title: fd.get('title'), message: fd.get('message'), audience, channels, sentBy: 'Admin' };
-    if (audience === 'event_specific' && fd.get('eventId')) body.eventId = Number(fd.get('eventId'));
-    try {
-      await api.post('/notifications', body);
-      toast('Notification sent to Sangat!'); await loadPage('notifications');
-    } catch (err) { toast(err.message, 'error'); }
-  };
+  if (editable) {
+    document.getElementById('notif-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const channels = fd.getAll('channels');
+      const audience = fd.get('audience');
+      const body = { title: fd.get('title'), message: fd.get('message'), audience, channels, sentBy: authUser?.name || 'Admin' };
+      if (audience === 'event_specific' && fd.get('eventId')) body.eventId = Number(fd.get('eventId'));
+      try {
+        await api.post('/notifications', body);
+        toast('Notification sent to Sangat!'); await loadPage('notifications');
+      } catch (err) { toast(err.message, 'error'); }
+    };
+  }
 }
 
 window.toggleEventField = (val) => {
@@ -1094,9 +1133,15 @@ function showApp() {
   const shell = document.getElementById('app-shell');
   shell.style.display = 'flex';
 
+  // Show/hide nav items based on role
+  document.querySelectorAll('.nav-link').forEach(el => {
+    el.style.display = canAccess(el.dataset.page) ? '' : 'none';
+  });
+
   // Update sidebar user chip
   if (authUser) {
     const roleLabels = { super_admin: 'Super Admin', event_manager: 'Event Manager', sewadar: 'Sewadar' };
+    const roleBadgeColors = { super_admin: '#dc2626', event_manager: '#ea580c', sewadar: '#2563eb' };
     const initial = (authUser.name || authUser.username || 'U')[0].toUpperCase();
     const footer = document.getElementById('sidebar-footer');
     if (footer) {
@@ -1105,7 +1150,7 @@ function showApp() {
           <div class="sidebar-user-avatar">${initial}</div>
           <div class="sidebar-user-info">
             <div class="sidebar-user-name">${esc(authUser.name || authUser.username)}</div>
-            <div class="sidebar-user-role">${roleLabels[authUser.role] || authUser.role}</div>
+            <div class="sidebar-user-role" style="color:${roleBadgeColors[authUser.role] || 'var(--text-muted)'}">${roleLabels[authUser.role] || authUser.role}</div>
           </div>
           <button class="logout-btn" onclick="doLogout()" title="Sign out">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
