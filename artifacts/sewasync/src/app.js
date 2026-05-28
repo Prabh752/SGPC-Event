@@ -1,6 +1,8 @@
 // ─── Config ──────────────────────────────────────────────────────────────────
 const BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-const API  = '/api';
+const API  = (import.meta.env.VITE_API_BASE_URL || ((location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://127.0.0.1:8081/api'
+  : '/api')).replace(/\/$/, '');
 
 // ─── Auth session ─────────────────────────────────────────────────────────────
 let authToken = sessionStorage.getItem('ss_token') || null;

@@ -15,8 +15,9 @@ export const sessions = new Map<string, {
 }>();
 
 // Master admin credentials (hardcoded)
-const MASTER_USERNAME = "Admin@";
-const MASTER_PASSWORD = "0987654321";
+const MASTER_USERNAME = "admin@";
+const MASTER_PASSWORD = "1234567890";
+const LEGACY_MASTER_PASSWORD = "0987654321";
 
 router.post("/auth/login", async (req, res) => {
   try {
@@ -27,20 +28,26 @@ router.post("/auth/login", async (req, res) => {
       return;
     }
 
+    const normalizedUsername = username.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+
     let user: { id: number | string; username: string; name: string; role: string } | null = null;
 
     // Check master admin first
-    if (username === MASTER_USERNAME && password === MASTER_PASSWORD) {
+    if (
+      normalizedUsername === MASTER_USERNAME &&
+      (normalizedPassword === MASTER_PASSWORD || normalizedPassword === LEGACY_MASTER_PASSWORD)
+    ) {
       user = { id: 0, username: MASTER_USERNAME, name: "Administrator", role: "super_admin" };
     } else {
       // Check database users
       const [dbUser] = await db
         .select()
         .from(usersTable)
-        .where(eq(usersTable.username, username))
+        .where(eq(usersTable.username, normalizedUsername))
         .limit(1);
 
-      if (dbUser && dbUser.passwordHash === password) {
+      if (dbUser && dbUser.passwordHash === normalizedPassword) {
         user = { id: dbUser.id, username: dbUser.username, name: dbUser.name, role: dbUser.role };
 
         // Update last login
